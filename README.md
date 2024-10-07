@@ -11,6 +11,11 @@ This TypeScript module provides a comprehensive solution for fetching, downloadi
 - **Revision Selector**: Dynamically create and insert a revision selector into the DOM.
 - **Diff Viewer**: Open a new window to display a side-by-side comparison of two proxy revisions using JSZip and jsdiff libraries.
 
+## Dirct Use
+download the ZIP file of the ext: https://github.com/egyjs/apigee-edge-tools-extension/releases/download/1.0/chrome-ext.zip
+and use it in: 
+`chrome://extensions/`
+
 ## Functions
 
 - [`delay(ms: number)`](command:_github.copilot.openSymbolFromReferences?%5B%22%22%2C%5B%7B%22uri%22%3A%7B%22scheme%22%3A%22file%22%2C%22authority%22%3A%22%22%2C%22path%22%3A%22%2Fc%3A%2FUsers%2Fel3za%2Fwork%2Fapigee-edge-tools-extension%2Fsource%2FTools%2Fapigee-edge.ts%22%2C%22query%22%3A%22%22%2C%22fragment%22%3A%22%22%7D%2C%22pos%22%3A%7B%22line%22%3A1%2C%22character%22%3A6%7D%7D%5D%2C%226f3e537e-5db1-4dcd-92b4-a445e674e039%22%5D "Go to definition"): Introduces a delay in milliseconds.
