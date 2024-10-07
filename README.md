@@ -12,7 +12,7 @@ This TypeScript module provides a comprehensive solution for fetching, downloadi
 - **Diff Viewer**: Open a new window to display a side-by-side comparison of two proxy revisions using JSZip and jsdiff libraries.
 
 ## Dirct Use
-download the ZIP file of the ext: https://github.com/egyjs/apigee-edge-tools-extension/releases/download/1.0/chrome-ext.zip
+download the ZIP file of the ext: https://github.com/egyjs/apigee-edge-tools-extension/releases/download/1.1/chrome.zip
 and use it in: 
 `chrome://extensions/`
 
