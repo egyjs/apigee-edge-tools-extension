@@ -97,153 +97,174 @@ const openDiffUI = async (rev1: { rev: string, bundle: Blob }, rev2: { rev: stri
     const blob1 = rev1.bundle;
     const blob2 = rev2.bundle;
     if (newWindow) {
-        const blob1ArrayBuffer = await blob1.arrayBuffer();
-        const blob2ArrayBuffer = await blob2.arrayBuffer();
+      const blob1ArrayBuffer = await blob1.arrayBuffer();
+      const blob2ArrayBuffer = await blob2.arrayBuffer();
 
-        newWindow.document.write(`
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Diff Viewer</title>
-        <style>
-          body {
-            display: flex;
-            font-family: Arial, sans-serif;
+      newWindow.document.write(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Diff Viewer</title>
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+        }
+        .navigation {
+          width: 30%;
+          border-right: 1px solid #ccc;
+          padding: 10px;
+          box-sizing: border-box;
+          float: left;
+        }
+        .diff-viewer {
+              width: 70%;
+              padding: 10px;
+              box-sizing: border-box;
+              float: left;
+      }
+        ul {
+          list-style-type: none;
+          padding: 0;
+        }
+        li:not(.f-removed) {
+          padding: 5px;
+          border-bottom: 1px solid #ddd;
+          cursor: pointer;
+        }
+        li:hover {
+          background-color: #f0f0f0;
+        }
+        .added {
+          background-color: #e6ffe6;
+        }
+        .removed {
+          background-color: #ffe6e6;
+        }
+        .f-added {
+          color: #00b100;
+        }
+        .f-removed {
+          color: red;
+        }
+        .f-modified {
+          color: #003e00;
+          font-weight: bold;
+        }
+        li.active {
+          background-color: #eee     
+        }
+      </style>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/jsdiff/7.0.0/diff.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.7.1/styles/github.min.css" />
+  <link
+    rel="stylesheet" 
+    type="text/css"
+    href="https://cdn.jsdelivr.net/npm/diff2html/bundles/css/diff2html.min.css"
+  />
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/diff2html/bundles/js/diff2html-ui.min.js"></script>
+    </head>
+    <body>
+      <div class="navigation">
+        <h3>Files -  Rev ( <span class="f-added">"${rev1.rev}"</span> vs "${rev2.rev}")</h3>
+        <ul id="file-list"></ul>
+      </div>
+      <div class="diff-viewer" id="diff-viewer">
+        <h3>Diff</h3>
+        <div id="diff-el"></div>
+      </div>
+      <script>
+        (async function(blob1ArrayBuffer, blob2ArrayBuffer) {
+          const fileList = document.getElementById('file-list');
+          const diffContent = document.getElementById('diff-el');
+          
+          // Load and extract files from the zip blobs
+          const zip1 = await JSZip.loadAsync(blob1ArrayBuffer);
+          const zip2 = await JSZip.loadAsync(blob2ArrayBuffer);
+          
+          let files = Object.keys(zip1.files).map(fileName => {
+              const is_new = zip2.files[fileName] === undefined;
+              const is_deleted = false;
+              return {
+                  fileName,
+                  is_new,
+                  is_deleted: is_deleted,
+                  is_modified: (!is_deleted && zip2.files[fileName]?._data.compressedSize !== zip1.files[fileName]?._data.compressedSize)};
+          });
+          Object.keys(zip2.files).forEach(fileName => {
+              if (zip1.files[fileName] === undefined) {
+                  files.push({fileName, is_new: false, is_deleted: true, is_modified: false});
+              }
+          });
+             
+          const color = (file) => {
+              if (file.is_new) {
+                  return 'f-added';
+              } else if (file.is_deleted) {
+                  return 'f-removed';
+              } else if (file.is_modified) {
+                  return 'f-modified';
+              } else {
+                  return '';
+              }
           }
-          .navigation {
-            width: 30%;
-            border-right: 1px solid #ccc;
-            padding: 10px;
-            box-sizing: border-box;
-          }
-          .diff-viewer {
-            width: 70%;
-            padding: 10px;
-            box-sizing: border-box;
-            white-space: pre-wrap;
-            background-color: #f9f9f9;
-            border: 1px solid #ccc;
-          }
-          ul {
-            list-style-type: none;
-            padding: 0;
-          }
-          li:not(.f-removed) {
-            padding: 5px;
-            border-bottom: 1px solid #ddd;
-            cursor: pointer;
-          }
-          li:hover {
-            background-color: #f0f0f0;
-          }
-          .added {
-            background-color: #e6ffe6;
-          }
-          .removed {
-            background-color: #ffe6e6;
-          }
-          .f-added {
-            color: #00b100;
-          }
-          .f-removed {
-            color: red;
-          }
-          .f-modified {
-            color: #003e00;
-            font-weight: bold;
-          }
-          li.active {
-            background-color: #eee     
-          }
-        </style>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/jsdiff/7.0.0/diff.min.js"></script>
-      </head>
-      <body>
-        <div class="navigation">
-          <h3>Files -  Rev ( <span class="f-added">"${rev1.rev}"</span> vs "${rev2.rev}")</h3>
-          <ul id="file-list"></ul>
-        </div>
-        <div class="diff-viewer" id="diff-viewer">
-          <h3>Diff</h3>
-          <pre id="diff-content"></pre>
-        </div>
-        <script>
-          (async function(blob1ArrayBuffer, blob2ArrayBuffer) {
-            const fileList = document.getElementById('file-list');
-            const diffContent = document.getElementById('diff-content');
-            
-            // Load and extract files from the zip blobs
-            const zip1 = await JSZip.loadAsync(blob1ArrayBuffer);
-            const zip2 = await JSZip.loadAsync(blob2ArrayBuffer);
-            
-            let files = Object.keys(zip1.files).map(fileName => {
-                const is_new = zip2.files[fileName] === undefined;
-                const is_deleted = false;
-                return {
-                    fileName,
-                    is_new,
-                    is_deleted: is_deleted,
-                    is_modified: (!is_deleted && zip2.files[fileName]?._data.compressedSize !== zip1.files[fileName]?._data.compressedSize)};
-            });
-            Object.keys(zip2.files).forEach(fileName => {
-                if (zip1.files[fileName] === undefined) {
-                    files.push({fileName, is_new: false, is_deleted: true, is_modified: false});
+          
+          files.forEach(file => {
+            const fileName = file.fileName;
+            const li = document.createElement('li');
+            li.textContent = fileName;
+            li.className = color(file);
+            li.onclick = async () => {
+                if (file.is_deleted) {
+                  return;
                 }
-            });
-               
-            const color = (file) => {
-                if (file.is_new) {
-                    return 'f-added';
-                } else if (file.is_deleted) {
-                    return 'f-removed';
-                } else if (file.is_modified) {
-                    return 'f-modified';
-                } else {
-                    return '';
-                }
-            }
-            
-            files.forEach(file => {
-              const fileName = file.fileName;
-              const li = document.createElement('li');
-              li.textContent = fileName;
-              li.className = color(file);
-              li.onclick = async () => {
-                  if (file.is_deleted) {
-                    return;
-                  }
-                  // add .active class to the clicked li
-                const active = document.querySelector('.active');
-                if (active) {
-                    active.classList.remove('active');
-                }
-                li.classList.add('active');
-                const file1Content = await zip1.files[fileName].async('string');
-                const file2Content = await zip2.files[fileName]?.async('string') || '';
-                const diff = Diff.diffLines(file2Content, file1Content);
-                
-                diffContent.innerHTML = '';
-                diff.forEach(part => {
-                  const span = document.createElement('span');
-                  span.textContent = part.value;
-                  if (part.added) {
-                    span.className = 'added';
-                  } else if (part.removed) {
-                    span.className = 'removed';
-                  }
-                  diffContent.appendChild(span);
-                });
-              };
-              fileList.appendChild(li);
-            });
-      })(${JSON.stringify(Array.from(new Uint8Array(blob1ArrayBuffer)))}, ${JSON.stringify(Array.from(new Uint8Array(blob2ArrayBuffer)))});
-        </script>
-      </body>
-      </html>
-    `);
-    }
+                // add .active class to the clicked li
+              const active = document.querySelector('.active');
+              if (active) {
+                  active.classList.remove('active');
+              }
+              li.classList.add('active');
+              const file1Content = await zip1.files[fileName].async('string');
+              const file2Content = await zip2.files[fileName]?.async('string') || '';
+              const diff = Diff.createTwoFilesPatch(fileName,fileName,file2Content, file1Content);
+              
+              
+              var configuration = {
+                  drawFileList: true,
+                  fileListToggle: false,
+                  fileListStartVisible: false,
+                  fileContentToggle: false,
+                  matching: 'lines',
+                  outputFormat: 'side-by-side',
+                  synchronisedScroll: true,
+                  highlight: true,
+                  renderNothingWhenEmpty: false,
+               };
+            var diff2htmlUi = new Diff2HtmlUI(diffContent, diff, configuration);
+            diff2htmlUi.draw();
+            diff2htmlUi.highlightCode();
+
+              // diffContent.innerHTML = '';
+              // diff.forEach(part => {
+              //   const span = document.createElement('span');
+              //   span.textContent = part.value;
+              //   if (part.added) {
+              //     span.className = 'added';
+              //   } else if (part.removed) {
+              //     span.className = 'removed';
+              //   }
+              //   diffContent.appendChild(span);
+              // });
+            };
+            fileList.appendChild(li);
+          });
+    })(${JSON.stringify(Array.from(new Uint8Array(blob1ArrayBuffer)))}, ${JSON.stringify(Array.from(new Uint8Array(blob2ArrayBuffer)))});
+      </script>
+    </body>
+    </html>
+  `);
+  }
 };
 export { diff };
